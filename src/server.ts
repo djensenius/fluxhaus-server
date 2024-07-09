@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import fs from 'fs';
 import express, { Express } from 'express';
+import bodyParser from 'body-parser';
 import rateLimit from 'express-rate-limit';
 import nocache from 'nocache';
 import cors, { CorsOptions } from 'cors';
@@ -8,6 +9,7 @@ import basicAuth from 'express-basic-auth';
 import notFoundHandler from './middleware/not-found.middleware';
 import Robot, { AccessoryConfig } from './robots';
 import Car, { CarConfig } from './car';
+import Rhizome from './rhizome'
 
 const port = process.env.PORT || 8080;
 
@@ -34,6 +36,7 @@ async function createServer(): Promise<Express> {
       challenge: true,
       realm: 'fluxhaus',
     }),
+    bodyParser.json(),
   );
   const allowedOrigins = [
     'http://localhost:8080',
@@ -223,41 +226,25 @@ async function createServer(): Promise<Express> {
     }, 5000);
   });
 
+  app.post('/scheduleRhizome', cors(corsOptions), async (req, res) => {
+    let theRequest = req as basicAuth.IBasicAuthedRequest;
+    if (theRequest.auth.user === "rhizome" || theRequest.auth.user === "admin") {
+      let dropoff = new Date(req.body.dropoff);
+      let pickup = new Date(req.body.pickup);
+      Rhizome.schedule(dropoff, pickup);
+      res.send(JSON.stringify({ "result": "Ok "}));
+    } else {
+      res.status(401).send(JSON.stringify({ "error": "Not Authorized"}));
+    }
+  });
+
   app.use(notFoundHandler);
 
   return app;
 }
 
 const fetchSchedule = () => {
-  const startDate = new Date();
-  const endDate = new Date();
-  endDate.setFullYear(endDate.getFullYear() + 1);
-
-  fetch(`https://us-central1-com-dogtopia-app.cloudfunctions.net/executive/appointments/daycare/${process.env.DOGTOPIA_SCHEDULE_CODE}?startDate=${startDate.getTime()}&endDate=${endDate.getTime()}`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'Sec-Fetch-Site': 'cross-site',
-      'Accept-Language': 'en-CA,en-US;q=0.9,en;q=0.8',
-      'Accept-Encoding': 'gzip, deflate, br',
-      'Sec-Fetch-Mode': 'cors',
-      Host: 'us-central1-com-dogtopia-app.cloudfunctions.net',
-      Origin: 'https://www.dogtopia.com',
-      // eslint-disable-next-line max-len
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15',
-      Referer: 'https://www.dogtopia.com/',
-      Connection: 'keep-alive',
-      'Sec-Fetch-Dest': 'empty',
-      Priority: 'u=3, i',
-      Authorization: `Bearer ${process.env.DOGTOPIA_TOKEN}`,
-    },
-  }).then((response) => response.json())
-    .then((json) => {
-      fs.writeFileSync(
-        'cache/rhizome.json',
-        JSON.stringify({ timestamp: new Date(), ...json }, null, 2),
-      );
-    });
+  Rhizome.fetchSchedule();
 };
 
 fetchSchedule();
@@ -265,23 +252,8 @@ setInterval(() => {
   fetchSchedule();
 }, 1000 * 60 * 60);
 
-const newsURL = 'https://raw.githubusercontent.com/djensenius/Rhizome-Data/main/news.md';
-
-interface GitHubFile {
-  name: string;
-  download_url: string;
-}
-
 const fetchRhizomePhotos = () => {
-  fetch('https://api.github.com/repos/djensenius/Rhizome-Data/contents/photos?ref=main')
-    .then((response) => response.json())
-    .then((json) => {
-      const photos = json.map((file: GitHubFile) => file.download_url);
-      fs.writeFileSync(
-        'cache/rhizomePhotos.json',
-        JSON.stringify({ timestamp: new Date(), news: newsURL, photos: [...photos] }, null, 2),
-      );
-    });
+  Rhizome.fetchRhizomePhotos();
 };
 
 fetchRhizomePhotos();
