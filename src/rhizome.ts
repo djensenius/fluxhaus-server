@@ -71,6 +71,7 @@ export default class Rhizome {
     DOGTOPIA_SCHEDULE_REQUEST = DOGTOPIA_SCHEDULE_REQUEST.replace('DROPOFF_TIME', encodeURIComponent(localDropoffTime));
     DOGTOPIA_SCHEDULE_REQUEST = DOGTOPIA_SCHEDULE_REQUEST.replace('PICKUP_TIME', encodeURIComponent(localPickupTime));
     // Now I need to use DOGTOPIA_SCHEDLUE_URL to send the request with DOGTOPIA_SCHEDULE_REQUEST as the body
+    /*
     fetch(DOGTOPIA_SCHEDLUE_URL!, {
       method: 'POST',
       headers: {
@@ -94,5 +95,7 @@ export default class Rhizome {
         console.log(DOGTOPIA_SCHEDULE_REQUEST);
         console.log(response);
     });
+    */
+    // Get SID
   };
 }
